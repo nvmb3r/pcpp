@@ -35,6 +35,13 @@ __all__ = ['Preprocessor', 'PreprocessorHooks', 'OutputDirective', 'Action', 'Ev
 # Useful for figuring out how long a sequence of preprocessor inclusions actually is
 # ------------------------------------------------------------------
 
+
+## Ifdefuzz
+## We need to maken sure we avoid recursive circular inclusion
+seen_files = set()
+##
+
+
 class FileInclusionTime(object):
     """The seconds taken to #include another file"""
     def __init__(self,including_path,included_path,included_abspath,depth):
@@ -1161,8 +1168,19 @@ class Preprocessor(PreprocessorHooks):
                         for tok in self.parsegen(data,filename,fulliname):
                             pass
                     else:
-                        for tok in self.parsegen(data,filename,fulliname):
-                            yield tok
+                        continue
+                        #sys.stderr.write(f"RECURSIVE INCLUDE BUG HERE: {filename}\n")
+                        # if filename in seen_files:
+                        #     continue
+                        # else:
+                        #     seen_files.add(filename)
+                        #     #print(f"RECURSIVE INCLUDE BUG HERE: {filename}")
+                        #     for tok in self.parsegen(data,filename,fulliname):
+                        #         yield tok
+                        # Original pcpp:
+                        # for tok in self.parsegen(data,filename,fulliname):
+                        #     yield tok
+                        ######
                     if dname:
                         del self.temp_path[0]
                     return
