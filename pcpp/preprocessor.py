@@ -1299,6 +1299,9 @@ class Preprocessor(PreprocessorHooks):
         if isinstance(input, FILE_TYPES):
             if source is None:
                 source = input.name
+            ## ifdefuzz: ignore bytes we cannot decode (for now)
+            input.reconfigure(errors='ignore')
+            ####
             input = input.read()
         self.ignore = ignore
         self.parser = self.parsegen(input,source,os.path.abspath(source) if source else None)
