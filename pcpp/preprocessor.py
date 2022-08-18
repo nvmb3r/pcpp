@@ -895,9 +895,11 @@ class Preprocessor(PreprocessorHooks):
                             oldfile = self.macros['__FILE__'] if '__FILE__' in self.macros else None
                             if args and args[0].value != '<' and args[0].type != self.t_STRING:
                                 args = self.tokenstrip(self.expand_macros(args))
-                            # print('***', ''.join([x.value for x in args]), file = sys.stderr)
-                            for tok in self.include(args, x):
-                                yield tok
+                            #print('***', ''.join([x.value for x in args]), file = sys.stderr)
+                            #### ifdefuz skip parsing of included files (we will handle this by mergin results
+                            # for tok in self.include(args, x):
+                            #     yield tok
+                            ####  ifdefuz ####
                             if oldfile is not None:
                                 self.macros['__FILE__'] = oldfile
                             self.source = abssource
