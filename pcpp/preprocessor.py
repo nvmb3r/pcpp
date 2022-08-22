@@ -896,10 +896,13 @@ class Preprocessor(PreprocessorHooks):
                             if args and args[0].value != '<' and args[0].type != self.t_STRING:
                                 args = self.tokenstrip(self.expand_macros(args))
                             #print('***', ''.join([x.value for x in args]), file = sys.stderr)
-                            #### ifdefuz skip parsing of included files (we will handle this by mergin results
-                            # for tok in self.include(args, x):
-                            #     yield tok
-                            ####  ifdefuz ####
+                            # ifdefuz skip parsing of included files (we will handle this by mergin results
+                            file_to_include = ''.join([x.value for x in args])
+                            # if file_to_include not in seen_files:
+                            #     seen_files.add(file_to_include)
+                            for tok in self.include(args, x):
+                                yield tok
+                            ###
                             if oldfile is not None:
                                 self.macros['__FILE__'] = oldfile
                             self.source = abssource
@@ -1153,10 +1156,12 @@ class Preprocessor(PreprocessorHooks):
                 if fulliname in self.include_once:
                     if self.debugout is not None:
                         print("x:x:x x:x #include \"%s\" skipped as already seen" % (fulliname), file = self.debugout)
+                    #### ifdefuzz, maybe this is a a better solution to avoid circular dependecies: killing the check of passthru includes?
                     if self.passthru_includes is not None and self.passthru_includes.match(''.join([x.value for x in tokens])):
                         for tok in original_line:
                             yield tok
                     return
+                    #### Ifdefuzz
                 try:
                     ih = self.on_file_open(is_system_include,fulliname)
                     data = ih.read()
@@ -1180,8 +1185,8 @@ class Preprocessor(PreprocessorHooks):
                         #     for tok in self.parsegen(data,filename,fulliname):
                         #         yield tok
                         # Original pcpp:
-                        # for tok in self.parsegen(data,filename,fulliname):
-                        #     yield tok
+                        for tok in self.parsegen(data,filename,fulliname):
+                            yield tok
                         ######
                     if dname:
                         del self.temp_path[0]
