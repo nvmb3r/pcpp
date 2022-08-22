@@ -897,11 +897,11 @@ class Preprocessor(PreprocessorHooks):
                                 args = self.tokenstrip(self.expand_macros(args))
                             #print('***', ''.join([x.value for x in args]), file = sys.stderr)
                             # ifdefuz skip parsing of included files (we will handle this by mergin results
-                            file_to_include = ''.join([x.value for x in args])
+                            # file_to_include = ''.join([x.value for x in args])
                             # if file_to_include not in seen_files:
                             #     seen_files.add(file_to_include)
-                            for tok in self.include(args, x):
-                                yield tok
+                            # for tok in self.include(args, x):
+                            #     yield tok
                             ###
                             if oldfile is not None:
                                 self.macros['__FILE__'] = oldfile
@@ -1157,7 +1157,7 @@ class Preprocessor(PreprocessorHooks):
                     if self.debugout is not None:
                         print("x:x:x x:x #include \"%s\" skipped as already seen" % (fulliname), file = self.debugout)
                     #### ifdefuzz, maybe this is a a better solution to avoid circular dependecies: killing the check of passthru includes?
-                    if self.passthru_includes is not None and self.passthru_includes.match(''.join([x.value for x in tokens])):
+                    if self.passthru_includes is not None and self.passthru_includes.match(''.join([x.value for x in tokens])) and fulliname not in self.include_once:
                         for tok in original_line:
                             yield tok
                     return
