@@ -1185,8 +1185,8 @@ class Preprocessor(PreprocessorHooks):
                         #     for tok in self.parsegen(data,filename,fulliname):
                         #         yield tok
                         # Original pcpp:
-                        for tok in self.parsegen(data,filename,fulliname):
-                            yield tok
+                        #for tok in self.parsegen(data,filename,fulliname):
+                        #    yield tok
                         ######
                     if dname:
                         del self.temp_path[0]
