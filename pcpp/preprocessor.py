@@ -35,6 +35,13 @@ __all__ = ['Preprocessor', 'PreprocessorHooks', 'OutputDirective', 'Action', 'Ev
 # Useful for figuring out how long a sequence of preprocessor inclusions actually is
 # ------------------------------------------------------------------
 
+
+## Ifdefuzz
+## We need to maken sure we avoid recursive circular inclusion
+seen_files = set()
+##
+
+
 class FileInclusionTime(object):
     """The seconds taken to #include another file"""
     def __init__(self,including_path,included_path,included_abspath,depth):
@@ -552,7 +559,9 @@ class Preprocessor(PreprocessorHooks):
     # Given a list of tokens, this function performs macro expansion.
     # ----------------------------------------------------------------------
 
-    def expand_macros(self,tokens,expanding_from=[]):
+    def expand_macros(self,tokens,expanding_from=None):
+        if expanding_from == None:
+            expanding_from = []
         """Given a list of tokens, this function performs macro expansion."""
         # Each token needs to track from which macros it has been expanded from to prevent recursion
         for tok in tokens:
@@ -574,7 +583,10 @@ class Preprocessor(PreprocessorHooks):
                     if m.arglist is None:
                         # A simple macro
                         rep = [copy.copy(_x) for _x in m.value]
-                        ex = self.expand_macros(rep, expanding_from + [t.value])
+                        ### FIX REQUIRED TO AVOID MAX RECURSION ###
+                        expanding_from.append(t.value)
+                        ex = self.expand_macros(rep, expanding_from)
+                        ####
                         #print("\nExpanding macro", m, "\ninto", ex, "\nreplacing", tokens[i:i+1])
                         for e in ex:
                             e.source = t.source
@@ -622,7 +634,11 @@ class Preprocessor(PreprocessorHooks):
                                         
                                 # Get macro replacement text
                                 rep = self.macro_expand_args(m,args)
-                                ex = self.expand_macros(rep, expanding_from + [t.value])
+                                
+                                 ### FIX REQUIRED TO AVOID MAX RECURSION#
+                                expanding_from.append(t.value)
+                                ex = self.expand_macros(rep, expanding_from)
+                                ####
                                 for e in ex:
                                     e.source = t.source
                                     e.lineno = t.lineno
@@ -888,9 +904,14 @@ class Preprocessor(PreprocessorHooks):
                             oldfile = self.macros['__FILE__'] if '__FILE__' in self.macros else None
                             if args and args[0].value != '<' and args[0].type != self.t_STRING:
                                 args = self.tokenstrip(self.expand_macros(args))
-                            # print('***', ''.join([x.value for x in args]), file = sys.stderr)
-                            for tok in self.include(args, x):
-                                yield tok
+                            #print('***', ''.join([x.value for x in args]), file = sys.stderr)
+                            # ifdefuz skip parsing of included files (we will handle this by mergin results
+                            # file_to_include = ''.join([x.value for x in args])
+                            # if file_to_include not in seen_files:
+                            #     seen_files.add(file_to_include)
+                            # for tok in self.include(args, x):
+                            #     yield tok
+                            ###
                             if oldfile is not None:
                                 self.macros['__FILE__'] = oldfile
                             self.source = abssource
@@ -1144,10 +1165,12 @@ class Preprocessor(PreprocessorHooks):
                 if fulliname in self.include_once:
                     if self.debugout is not None:
                         print("x:x:x x:x #include \"%s\" skipped as already seen" % (fulliname), file = self.debugout)
-                    if self.passthru_includes is not None and self.passthru_includes.match(''.join([x.value for x in tokens])):
+                    #### ifdefuzz, maybe this is a a better solution to avoid circular dependecies: killing the check of passthru includes?
+                    if self.passthru_includes is not None and self.passthru_includes.match(''.join([x.value for x in tokens])) and fulliname not in self.include_once:
                         for tok in original_line:
                             yield tok
                     return
+                    #### Ifdefuzz
                 try:
                     ih = self.on_file_open(is_system_include,fulliname)
                     data = ih.read()
@@ -1161,8 +1184,19 @@ class Preprocessor(PreprocessorHooks):
                         for tok in self.parsegen(data,filename,fulliname):
                             pass
                     else:
-                        for tok in self.parsegen(data,filename,fulliname):
-                            yield tok
+                        continue
+                        #sys.stderr.write(f"RECURSIVE INCLUDE BUG HERE: {filename}\n")
+                        # if filename in seen_files:
+                        #     continue
+                        # else:
+                        #     seen_files.add(filename)
+                        #     #print(f"RECURSIVE INCLUDE BUG HERE: {filename}")
+                        #     for tok in self.parsegen(data,filename,fulliname):
+                        #         yield tok
+                        # Original pcpp:
+                        #for tok in self.parsegen(data,filename,fulliname):
+                        #    yield tok
+                        ######
                     if dname:
                         del self.temp_path[0]
                     return
@@ -1281,6 +1315,9 @@ class Preprocessor(PreprocessorHooks):
         if isinstance(input, FILE_TYPES):
             if source is None:
                 source = input.name
+            ## ifdefuzz: ignore bytes we cannot decode (for now)
+            input.reconfigure(errors='ignore')
+            ####
             input = input.read()
         self.ignore = ignore
         self.parser = self.parsegen(input,source,os.path.abspath(source) if source else None)
